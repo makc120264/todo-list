@@ -7,11 +7,20 @@ use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\View\Factory;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class TaskController extends Controller
 {
+    public function edit(Task $task)
+    {
+        if ($task->user_id !== Auth::id()) {
+            abort(403);
+        }
+        return view('tasks.edit', compact('task'));
+    }
+
     /**
      * @return Application|Factory|View
      */
@@ -43,9 +52,9 @@ class TaskController extends Controller
      * @param Request $request
      * @return JsonResponse
      */
-    public function store(Request $request): JsonResponse
+    public function store(Request $request): JsonResponse|RedirectResponse
     {
-        $request->validate([
+        $data = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'status' => 'required|in:pending,in progress,completed',
@@ -53,47 +62,75 @@ class TaskController extends Controller
 
         $task = Task::create([
             'user_id' => Auth::id(),
-            'title' => $request->title,
-            'description' => $request->description,
-            'status' => $request->status,
+            'title' => empty($data["title"]) ? $request->title : $data["title"],
+            'description' => empty($data['description']) ? $request->description : $data["description"],
+            'status' => empty($data['status']) ? $request->status : $data["status"],
         ]);
 
-        return response()->json($task, 201);
+        if ($request->is('api/*')) {
+            return response()->json([
+                'message' => 'Task created successfully',
+                'task' => $task,
+            ], 200);
+        }
+
+        return redirect()->route('tasks.index')->with('success', 'Task added successfully!');
     }
+
 
     /**
      * @param Request $request
      * @param Task $task
-     * @return JsonResponse
+     * @return JsonResponse|RedirectResponse
      */
-    public function update(Request $request, Task $task): JsonResponse
+    public function update(Request $request, Task $task): JsonResponse|RedirectResponse
     {
         if ($task->user_id !== Auth::id()) {
-            return response()->json(['error' => 'Unauthorized'], 403);
+            return $request->is('api/*')
+                ? response()->json(['error' => 'Unauthorized'], 403)
+                : redirect()->route('tasks.index')->with('error', 'Unauthorized');
         }
 
-        $request->validate([
+        $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'status' => 'required|in:pending,in progress,completed',
         ]);
 
-        $task->update($request->all());
+        $task->update($validated);
 
-        return response()->json($task);
+        if ($request->is('api/*')) {
+            return response()->json([
+                'message' => 'Task updated successfully',
+                'task' => $task,
+            ]);
+        }
+
+        return redirect()->route('tasks.index')->with('success', 'Task updated successfully!');
     }
 
     /**
+     * @param Request $request
      * @param Task $task
-     * @return JsonResponse
+     * @return JsonResponse|RedirectResponse
      */
-    public function destroy(Task $task): JsonResponse
+    public function destroy(Request $request, Task $task): JsonResponse|RedirectResponse
     {
         if ($task->user_id !== Auth::id()) {
-            return response()->json(['error' => 'Unauthorized'], 403);
+            if ($request->is('api/*')) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            } else {
+                return redirect()->route('tasks.index')->with('error', 'Unauthorized');
+            }
         }
 
         $task->delete();
-        return response()->json(['message' => 'Task deleted successfully']);
+
+        if ($request->is('api/*')) {
+            return response()->json(['message' => 'Task deleted successfully']);
+        } else {
+            return redirect()->route('tasks.index')->with('success', 'Task deleted successfully');
+        }
     }
+
 }
