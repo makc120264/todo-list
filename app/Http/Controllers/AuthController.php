@@ -11,6 +11,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AuthController extends Controller
@@ -50,8 +51,12 @@ class AuthController extends Controller
         ]);
 
         if ($request->is('api/*')) {
-            $token = JWTAuth::fromUser($user);
-            return response()->json(['token' => $token]);
+            try {
+                $token = JWTAuth::fromUser($user);
+                return response()->json(['token' => $token]);
+            } catch (JWTException $e) {
+                return response()->json(['error' => 'Failed to register, please try again.'], 500);
+            }
         } else {
             return redirect()->route('login')->with('success', 'Registration successful, please login.');
         }
@@ -66,10 +71,14 @@ class AuthController extends Controller
         $credentials = $request->only('email', 'password');
 
         if ($request->is('api/*')) {
-            if (!$token = JWTAuth::attempt($credentials)) {
-                return response()->json(['error' => 'Invalid credentials'], 401);
+            try {
+                if (!$token = JWTAuth::attempt($credentials)) {
+                    return response()->json(['error' => 'Invalid credentials'], 401);
+                }
+                return response()->json(['token' => $token]);
+            } catch (JWTException $e) {
+                return response()->json(['error' => 'Failed to log in, please try again.'], 500);
             }
-            return response()->json(['token' => $token]);
         } else {
             if (!Auth::attempt($credentials)) {
                 return redirect()->back()->withErrors(['email' => 'Invalid credentials']);
@@ -84,16 +93,19 @@ class AuthController extends Controller
      */
     public function logout(Request $request): JsonResponse|RedirectResponse
     {
-        if ($request->is('api/*')) {
-            JWTAuth::invalidate(JWTAuth::getToken());
-            return response()->json(['message' => 'Successfully logged out']);
+        try {
+            if ($request->is('api/*')) {
+                JWTAuth::invalidate(JWTAuth::getToken());
+                return response()->json(['message' => 'Successfully logged out']);
+            }
+
+            Auth::logout();
+
+            return redirect()->route('login')->with('message', 'Successfully logged out');
+        } catch (JWTException $e) {
+            return response()->json(['error' => 'Failed to log out, please try again.'], 500);
         }
-
-        Auth::logout();
-
-        return redirect()->route('login')->with('message', 'Successfully logged out');
     }
-
 
     /**
      * @return JsonResponse
