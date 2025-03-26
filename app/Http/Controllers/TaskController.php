@@ -22,20 +22,11 @@ class TaskController extends Controller
     }
 
     /**
-     * @return Application|Factory|View
+     * @param Request $request
+     * @param null $taskId
+     * @return JsonResponse|View|Application
      */
-    public function tasksIndex(): Factory|View|Application
-    {
-        $tasks = Task::where('user_id', Auth::id())->get();
-
-        return view('tasks.index', compact('tasks'));
-    }
-
-    /**
-     * @param $taskId
-     * @return JsonResponse
-     */
-    public function index($taskId = null): JsonResponse
+    public function index(Request $request, $taskId = null): JsonResponse|View|Application
     {
         $query = Task::where('user_id', Auth::id());
 
@@ -45,12 +36,17 @@ class TaskController extends Controller
 
         $tasks = $query->get();
 
-        return response()->json($tasks);
+        if ($request->is('api/*')) {
+            return response()->json($tasks);
+        }
+
+        return view('tasks.index', compact('tasks'));
     }
+
 
     /**
      * @param Request $request
-     * @return JsonResponse
+     * @return JsonResponse|RedirectResponse
      */
     public function store(Request $request): JsonResponse|RedirectResponse
     {

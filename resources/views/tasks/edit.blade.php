@@ -5,6 +5,10 @@
 @section('content')
     <div class="container">
         <h1 class="mb-4">Edit Task</h1>
+        <form action="{{ route('logout') }}" method="POST" class="hstack gap-3">
+            @csrf
+            <button type="submit" class="btn btn-danger ms-auto my-3">Logout</button>
+        </form>
         <div class="card">
             <div class="card-header bg-primary text-white">
                 Edit Task

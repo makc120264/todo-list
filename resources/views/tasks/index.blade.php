@@ -5,6 +5,10 @@
 @section('content')
     <div class="container">
         <h1 class="mb-4">Task List</h1>
+        <form action="{{ route('logout') }}" method="POST" class="hstack gap-3">
+            @csrf
+            <button type="submit" class="btn btn-danger ms-auto my-3">Logout</button>
+        </form>
         <div class="card mb-4">
             <div class="card-body">
                 <form action="{{ route('tasks.store') }}" method="POST" class="d-flex">
