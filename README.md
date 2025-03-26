@@ -12,7 +12,7 @@
 ### 1. Клонировать репозиторий
 
 ```bash
-git clone https://github.com/yourusername/todo-list.git
+git clone https://github.com/makc120264/todo-list.git
 cd todo-list
 ```
 
